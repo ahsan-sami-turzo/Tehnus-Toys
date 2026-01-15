@@ -231,7 +231,7 @@ const ToySynth = {
         osc.start(now); osc.stop(now + 0.15);
     },
 
-    boing() {
+    tincan() {
         const now = audioCtx.currentTime;
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
@@ -295,26 +295,41 @@ function stopLoop() {
 function handleMotion(event) {
     const acc = event.accelerationIncludingGravity;
     if (!acc) return;
+
+    // Calculate the total force (magnitude)
     const mag = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2);
-    if (mag > 18.0 && (Date.now() - lastShake) > 150) {
+    const now = Date.now();
+
+    // 18.0 threshold: Gravity (9.8) + your shake force (~8.2)
+    if (mag > 18.0 && (now - lastShake) > 150) {
         if (isLooping) stopLoop();
 
-        // RAINBOW LOGIC START
-        const newHue = Math.floor(Math.random() * 360);
-        document.body.style.setProperty('--bg-hue', newHue);
-        
-        // PARTICLE VISUALIZER
-        createBurst(); 
-        triggerRainbow()
-
-        // SOUND GENERATION
+        // 1. Ensure Audio is initialized
         initAudio();
-        ToySynth[selectedToy]();
+        
+        // 2. Play Sound First (Highest Priority)
+        if (ToySynth[selectedToy]) {
+            ToySynth[selectedToy]();
+        }
+
+        // 3. Trigger Visuals (Wrapped in checks to prevent crashes)
+        if (typeof triggerRainbow === "function") triggerRainbow();
+        if (typeof createBurst === "function") createBurst();
+
+        // 4. Haptic Feedback
         if (navigator.vibrate) navigator.vibrate(50);
-        lastShake = Date.now();        
+        
+        lastShake = now;        
     }
 }
 
+/**
+ * COLOR CHANGING ENGINE
+ */
+function triggerRainbow() {
+    const newHue = Math.floor(Math.random() * 360);
+    document.body.style.setProperty('--bg-hue', newHue);
+}
 
 /**
  * PARTICLE SYSTEM ENGINE
