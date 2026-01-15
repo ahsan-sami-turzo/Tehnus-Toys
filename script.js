@@ -67,20 +67,47 @@ function handleMotion(event) {
 
 // 3. Audio Trigger Logic
 function triggerToy() {
-    // Haptics
+    // 1. Stop any current sound immediately
+    if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+    }
+
+    // 2. Haptics
     if (navigator.vibrate) navigator.vibrate(50);
 
-    // Visual Feedback
+    // 3. Visual Feedback
     const activeCard = document.querySelector(`[data-sound="${selectedToy}"]`);
     activeCard.classList.add('pulse');
     setTimeout(() => activeCard.classList.remove('pulse'), 300);
 
-    // Play Sound (Standard Audio for simple overlap)
-    const audio = new Audio(sounds[selectedToy]);
-    audio.play();
+    // 4. Play the new sound and store it in the global variable
+    currentAudio = new Audio(sounds[selectedToy]);
+    currentAudio.play().catch(e => console.log("Audio play interrupted"));
 }
 
-// 4. Persistence Hacks
+// 5. Toy Selection Modification
+const cards = document.querySelectorAll('.toy-card');
+cards.forEach(card => {
+    card.addEventListener('click', () => {
+        // Stop current sound immediately when switching icons
+        if (currentAudio) {
+            currentAudio.pause();
+            currentAudio.currentTime = 0;
+        }
+
+        selectedToy = card.dataset.sound;
+        
+        // UI Update
+        cards.forEach(c => c.classList.remove('active'));
+        card.classList.add('active');
+        
+        // Play the new toy sound once to confirm selection
+        triggerToy(); 
+    });
+});
+
+// 6. Persistence Hacks
 async function requestWakeLock() {
     try {
         if ('wakeLock' in navigator) {
@@ -91,19 +118,10 @@ async function requestWakeLock() {
     }
 }
 
+// 6. Silent-loop Hacks
 function startSilentLoop() {
     const silentAudio = new Audio(sounds.silent);
     silentAudio.loop = true;
     silentAudio.volume = 0.05; // Low volume keeps the audio process alive
     silentAudio.play();
 }
-
-// 5. Toy Selection
-cards.forEach(card => {
-    card.addEventListener('click', () => {
-        selectedToy = card.dataset.sound;
-        cards.forEach(c => c.classList.remove('active'));
-        card.classList.add('active');
-        triggerToy(); // Play once on tap
-    });
-});
