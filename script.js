@@ -1,96 +1,114 @@
+/**
+ * TEHNUS TOYS - Core Logic
+ * Includes: Shake detection, persistence hacks, and audio management.
+ */
+
 let selectedToy = 'rattle';
 let lastShake = 0;
 let wakeLock = null;
-let silentStream = null;
+let currentAudio = null; // Global instance to manage "One sound at a time"
+let silentLoop = null;
 
-// Audio Context for Web Audio API
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-const soundBuffers = {};
-
-// Load Audio Files (Mocking paths - replace with your actual hosted assets)
+// Audio Asset Paths
 const sounds = {
     rattle: 'assets/rattle.mp3',
     bell: 'assets/bell.mp3',
     maraca: 'assets/maraca.mp3',
     wood: 'assets/wood.mp3',
-    silent: 'assets/silent_loop.mp3' // 1 second of silence
+    silent: 'assets/silent_loop.mp3'
 };
 
 // UI Elements
 const overlay = document.getElementById('permission-overlay');
 const appContainer = document.getElementById('app-container');
 const cards = document.querySelectorAll('.toy-card');
+const startBtn = document.getElementById('btn-start');
 
-// 1. Initialize Audio and Permissions
-document.getElementById('btn-start').addEventListener('click', async () => {
-    // Resume Audio Context (Browser requirement)
-    await audioCtx.resume();
-    
-    // Request Motion Permissions (iOS 13+ requirement)
+/**
+ * 1. INITIALIZATION & PERMISSIONS
+ * Triggered by the user gesture (Start Button)
+ */
+startBtn.addEventListener('click', async () => {
+    // A. Request Motion Permissions (Required for iOS 13+)
     if (typeof DeviceMotionEvent.requestPermission === 'function') {
         try {
             const permission = await DeviceMotionEvent.requestPermission();
-            if (permission !== 'granted') return alert("Motion access required!");
-        } catch (e) { console.error(e); }
+            if (permission !== 'granted') {
+                alert("Permission denied. The app needs motion access to work!");
+                return;
+            }
+        } catch (error) {
+            console.error("DeviceMotion permission error:", error);
+        }
     }
 
-    // Start Wake Lock & Silent Loop
+    // B. Activate Persistence Hacks
     requestWakeLock();
     startSilentLoop();
 
+    // C. Transition UI
     overlay.classList.add('hidden');
     appContainer.classList.remove('hidden');
     
-    // Listen for Motion
+    // D. Start listening for shakes
     window.addEventListener('devicemotion', handleMotion);
 });
 
-// 2. Shake Detection Logic
+/**
+ * 2. SHAKE DETECTION LOGIC
+ */
 function handleMotion(event) {
     const acc = event.accelerationIncludingGravity;
     if (!acc) return;
 
     /**
-     * SHAKE THRESHOLD MATH:
-     * We calculate the magnitude of the 3D vector: sqrt(x² + y² + z²).
-     * Gravity is approx 9.8 m/s². A vigorous shake typically exceeds 15-20 m/s².
+     * SHAKE MATH:
+     * Magnitude = sqrt(x² + y² + z²)
+     * Gravity is ~9.8 m/s². A threshold of 18.0 ensures 
+     * we only trigger on a deliberate physical shake.
      */
-    const threshold = 18;
     const magnitude = Math.sqrt(acc.x ** 2 + acc.y ** 2 + acc.z ** 2);
+    const threshold = 18.0;
     const now = Date.now();
 
+    // 150ms Debounce (Cooldown) prevents sound clipping
     if (magnitude > threshold && (now - lastShake) > 150) {
-        triggerToy();
+        triggerToySound();
         lastShake = now;
     }
 }
 
-// 3. Audio Trigger Logic
-function triggerToy() {
-    // 1. Stop any current sound immediately
+/**
+ * 3. AUDIO PLAYBACK ENGINE
+ */
+function triggerToySound() {
+    // A. Stop current sound if it's already playing (Modification: stop previous)
     if (currentAudio) {
         currentAudio.pause();
         currentAudio.currentTime = 0;
     }
 
-    // 2. Haptics
-    if (navigator.vibrate) navigator.vibrate(50);
+    // B. Haptics
+    if (navigator.vibrate) {
+        navigator.vibrate(50);
+    }
 
-    // 3. Visual Feedback
+    // C. Visual Feedback
     const activeCard = document.querySelector(`[data-sound="${selectedToy}"]`);
     activeCard.classList.add('pulse');
     setTimeout(() => activeCard.classList.remove('pulse'), 300);
 
-    // 4. Play the new sound and store it in the global variable
+    // D. Play Sound
     currentAudio = new Audio(sounds[selectedToy]);
-    currentAudio.play().catch(e => console.log("Audio play interrupted"));
+    currentAudio.play().catch(err => console.warn("Playback blocked:", err));
 }
 
-// 5. Toy Selection Modification
-const cards = document.querySelectorAll('.toy-card');
+/**
+ * 4. TOY SELECTION LOGIC
+ */
 cards.forEach(card => {
     card.addEventListener('click', () => {
-        // Stop current sound immediately when switching icons
+        // Stop any sound currently playing before switching
         if (currentAudio) {
             currentAudio.pause();
             currentAudio.currentTime = 0;
@@ -98,30 +116,50 @@ cards.forEach(card => {
 
         selectedToy = card.dataset.sound;
         
-        // UI Update
+        // Update UI visuals
         cards.forEach(c => c.classList.remove('active'));
         card.classList.add('active');
         
-        // Play the new toy sound once to confirm selection
-        triggerToy(); 
+        // Play once to confirm selection
+        triggerToySound();
     });
 });
 
-// 6. Persistence Hacks
+/**
+ * 5. BACKGROUND PERSISTENCE HACKS
+ */
 async function requestWakeLock() {
-    try {
-        if ('wakeLock' in navigator) {
+    if ('wakeLock' in navigator) {
+        try {
             wakeLock = await navigator.wakeLock.request('screen');
+            // Re-request if app is minimized and then returned to
+            document.addEventListener('visibilitychange', async () => {
+                if (wakeLock !== null && document.visibilityState === 'visible') {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                }
+            });
+        } catch (err) {
+            console.error(`Wake Lock Error: ${err.message}`);
         }
-    } catch (err) {
-        console.error(`${err.name}, ${err.message}`);
     }
 }
 
-// 6. Silent-loop Hacks
 function startSilentLoop() {
-    const silentAudio = new Audio(sounds.silent);
-    silentAudio.loop = true;
-    silentAudio.volume = 0.05; // Low volume keeps the audio process alive
-    silentAudio.play();
+    silentLoop = new Audio(sounds.silent);
+    silentLoop.loop = true;
+    silentLoop.volume = 0.05; // Low volume keeps the audio channel open
+    silentLoop.play().catch(() => {
+        console.log("Silent loop requires user interaction first");
+    });
+}
+
+/**
+ * 6. SERVICE WORKER REGISTRATION (PWA)
+ */
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+            .then(reg => console.log('SW Registered'))
+            .catch(err => console.log('SW Registration failed', err));
+    });
 }
