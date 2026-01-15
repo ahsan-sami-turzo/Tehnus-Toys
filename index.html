@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tehnus Toys</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#B2E2F2">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="icon" type="image/png" href="icon-192.png">
+</head>
+<body>
+    <div id="permission-overlay" class="overlay">
+        <div class="modal">
+            <h1>Tehnus Toys 🧸</h1>
+            <p>Tap to start the fun!</p>
+            <button id="btn-start">LET'S PLAY</button>
+        </div>
+    </div>
+
+    <main id="app-container" class="hidden">
+        <div class="grid">
+            <div class="toy-card" data-sound="rattle" style="background-color: #FFB7B2;">
+                <span class="icon">🪇</span>
+                <span class="label">Rattle</span>
+            </div>
+            <div class="toy-card" data-sound="bell" style="background-color: #B2E2F2;">
+                <span class="icon">🔔</span>
+                <span class="label">Bell</span>
+            </div>
+            <div class="toy-card" data-sound="maraca" style="background-color: #FDFD96;">
+                <span class="icon">✨</span>
+                <span class="label">Maraca</span>
+            </div>
+            <div class="toy-card" data-sound="wood" style="background-color: #B2F2BB;">
+                <span class="icon">🪵</span>
+                <span class="label">Wood</span>
+            </div>
+        </div>
+        <div class="status-bar">
+            Shake your phone to play!
+        </div>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>

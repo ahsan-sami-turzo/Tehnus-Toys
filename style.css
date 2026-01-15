@@ -1,0 +1,93 @@
+* {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+}
+
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    overflow: hidden;
+    background: #fdfdfd;
+}
+
+.overlay {
+    position: fixed;
+    inset: 0;
+    background: #B2E2F2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+}
+
+.modal {
+    text-align: center;
+    background: white;
+    padding: 2rem;
+    border-radius: 30px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+}
+
+#btn-start {
+    padding: 1rem 2rem;
+    font-size: 1.5rem;
+    border: none;
+    border-radius: 50px;
+    background: #FFB7B2;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.hidden { display: none; }
+
+.grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 15px;
+    height: 90vh;
+    padding: 15px;
+}
+
+.toy-card {
+    border-radius: 25px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.1s;
+    border: 8px solid rgba(255,255,255,0.3);
+}
+
+.toy-card.active {
+    border-color: white;
+    transform: scale(0.95);
+}
+
+.icon { font-size: 4rem; margin-bottom: 10px; }
+.label { font-weight: bold; color: #555; text-transform: uppercase; }
+
+.status-bar {
+    height: 10vh;
+    text-align: center;
+    line-height: 10vh;
+    font-weight: bold;
+    color: #888;
+}
+
+/* Shake Animation */
+@keyframes shake-pulse {
+    0% { transform: rotate(0deg) scale(1); }
+    25% { transform: rotate(10deg) scale(1.1); }
+    75% { transform: rotate(-10deg) scale(1.1); }
+    100% { transform: rotate(0deg) scale(1); }
+}
+
+.pulse {
+    animation: shake-pulse 0.3s ease-in-out;
+}
