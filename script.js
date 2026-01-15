@@ -299,19 +299,95 @@ function handleMotion(event) {
     if (mag > 18.0 && (Date.now() - lastShake) > 150) {
         if (isLooping) stopLoop();
 
-        // --- RAINBOW LOGIC START ---
-        // Pick a random number between 0 and 360 (the color wheel)
+        // RAINBOW LOGIC START
         const newHue = Math.floor(Math.random() * 360);
-        // Apply it to the document body
         document.body.style.setProperty('--bg-hue', newHue);
-        // --- RAINBOW LOGIC END ---
+        
+        // PARTICLE VISUALIZER
+        createBurst(); 
+        triggerRainbow()
 
+        // SOUND GENERATION
         initAudio();
         ToySynth[selectedToy]();
         if (navigator.vibrate) navigator.vibrate(50);
         lastShake = Date.now();        
     }
 }
+
+
+/**
+ * PARTICLE SYSTEM ENGINE
+ */
+const canvas = document.getElementById('visualizer');
+const ctx = canvas.getContext('2d');
+let particles = [];
+
+// Resize canvas to fit screen
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+class Particle {
+    constructor(x, y, color) {
+        this.x = x;
+        this.y = y;
+        this.size = Math.random() * 8 + 4;
+        this.speedX = (Math.random() * 10 - 5);
+        this.speedY = (Math.random() * 10 - 5);
+        this.color = color;
+        this.opacity = 1;
+    }
+
+    update() {
+        this.x += this.speedX;
+        this.y += this.speedY;
+        this.opacity -= 0.02; // Fade out speed
+        if (this.size > 0.2) this.size -= 0.1;
+    }
+
+    draw() {
+        ctx.globalAlpha = this.opacity;
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
+
+function createBurst() {
+    // Generate particles in a random location or center
+    const x = Math.random() * canvas.width;
+    const y = Math.random() * canvas.height;
+    const hue = getComputedStyle(document.body).getPropertyValue('--bg-hue');
+    
+    for (let i = 0; i < 30; i++) {
+        // Particles are slightly offset in color from the background for visibility
+        const color = `hsl(${(parseInt(hue) + 40) % 360}, 70%, 60%)`;
+        particles.push(new Particle(x, y, color));
+    }
+}
+
+function animateParticles() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (let i = 0; i < particles.length; i++) {
+        particles[i].update();
+        particles[i].draw();
+        
+        // Remove "dead" particles
+        if (particles[i].opacity <= 0) {
+            particles.splice(i, 1);
+            i--;
+        }
+    }
+    requestAnimationFrame(animateParticles);
+}
+
+// Start the animation loop
+animateParticles();
 
 // User Start Button
 document.getElementById('btn-start').addEventListener('click', async () => {
@@ -344,3 +420,28 @@ document.querySelectorAll('.toy-card').forEach(card => {
 
 document.getElementById('btn-loop').addEventListener('click', startLoop);
 document.getElementById('btn-stop').addEventListener('click', stopLoop);
+
+
+/**
+ * PWA AUTO-UPDATE LOGIC
+ */
+if ('serviceWorker' in navigator) {
+    let refreshing = false;
+
+    // Detect when the new Service Worker takes control
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!refreshing) {
+            refreshing = true;
+            // Reload the page to load the new code (fireworks, sounds, etc.)
+            window.location.reload();
+        }
+    });
+
+    navigator.serviceWorker.register('./sw.js').then(registration => {
+        // Optional: Check for updates every 10 minutes
+        setInterval(() => {
+            registration.update();
+            console.log("Checking for toy updates...");
+        }, 1000 * 60 * 10);
+    });
+}

@@ -3,7 +3,7 @@
  * Optimized for logic-based audio and rainbow-mode UI.
  */
 
-const CACHE_NAME = 'tehnus-v3-rainbow';
+const CACHE_NAME = 'tehnus-v4-particles';
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
