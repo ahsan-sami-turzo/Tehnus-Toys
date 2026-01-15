@@ -95,4 +95,4 @@ MIT License - Created for parents and developers everywhere.
 
 ---
 
-## TURZO AHSAN SAMI
+### Developed for my beloved firstborn Tehniyaat Akter Binte Sami
