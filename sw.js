@@ -1,9 +1,9 @@
 /**
- * TEHNUS TOYS - Service Worker (Refined)
- * Optimized for Synthetic Audio (No MP3 assets needed)
+ * TEHNUS TOYS - Service Worker (Synthetic v3)
+ * Optimized for logic-based audio and rainbow-mode UI.
  */
 
-const CACHE_NAME = 'tehnus-toys-v2';
+const CACHE_NAME = 'tehnus-v3-rainbow';
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
@@ -14,42 +14,54 @@ const ASSETS_TO_CACHE = [
     './icon-512.png'
 ];
 
-// Install: Create cache and store assets
+/**
+ * INSTALL EVENT:
+ * Pre-caches all UI and logic files.
+ */
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
-            console.log('SW: Caching core assets');
+            console.log('SW: Pre-caching App Shell');
             return cache.addAll(ASSETS_TO_CACHE);
         })
     );
-    // Force the waiting service worker to become the active service worker.
+    // Move to the active state immediately
     self.skipWaiting();
 });
 
-// Activate: Clean up old caches
+/**
+ * ACTIVATE EVENT:
+ * Deletes old caches to ensure the baby doesn't see an old version of the toy.
+ */
 self.addEventListener('activate', (event) => {
     event.waitUntil(
         caches.keys().then((cacheNames) => {
             return Promise.all(
                 cacheNames.map((cache) => {
                     if (cache !== CACHE_NAME) {
-                        console.log('SW: Clearing old cache', cache);
+                        console.log('SW: Removing outdated cache', cache);
                         return caches.delete(cache);
                     }
                 })
             );
         })
     );
-    // Claim control of all open clients (tabs)
+    // Take control of all open tabs immediately
     return self.clients.claim();
 });
 
-// Fetch: Serve from cache, fallback to network
+/**
+ * FETCH EVENT:
+ * Strategy: Cache First, falling back to Network.
+ * This ensures the app works perfectly in Airplane Mode.
+ */
 self.addEventListener('fetch', (event) => {
     event.respondWith(
-        caches.match(event.request).then((response) => {
-            // Return cached asset or fetch from network
-            return response || fetch(event.request);
+        caches.match(event.request).then((cachedResponse) => {
+            if (cachedResponse) {
+                return cachedResponse;
+            }
+            return fetch(event.request);
         })
     );
 });
