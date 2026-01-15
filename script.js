@@ -1,6 +1,5 @@
 /**
- * TEHNUS TOYS - 16 Sound Edition
- * Features: Synthetic noise generation, rhythmic looping, and shake detection.
+ * TEHNUS TOYS - Final Stable Edition
  */
 
 let audioCtx;
@@ -15,7 +14,6 @@ function initAudio() {
     if (audioCtx) return;
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     
-    // Create shared noise buffer for Rattle, Maraca, Crinkle, etc.
     const bufferSize = audioCtx.sampleRate * 2;
     noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
     const data = noiseBuffer.getChannelData(0);
@@ -24,17 +22,77 @@ function initAudio() {
     }
 }
 
-// Utility to get shake intensity (scaled for audio)
-const getIntensity = () => 0.8; 
+// 2. RAINBOW & VISUALS
+function triggerRainbow() {
+    const newHue = Math.floor(Math.random() * 360);
+    document.body.style.setProperty('--bg-hue', newHue);
+}
 
-/**
- * 2. THE TOY SYNTH ENGINE
- */
+const canvas = document.getElementById('visualizer');
+const ctx = canvas.getContext('2d');
+let particles = [];
+
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+class Particle {
+    constructor(x, y, color) {
+        this.x = x;
+        this.y = y;
+        this.size = Math.random() * 8 + 4;
+        this.speedX = (Math.random() * 10 - 5);
+        this.speedY = (Math.random() * 10 - 5);
+        this.color = color;
+        this.opacity = 1;
+    }
+    update() {
+        this.x += this.speedX;
+        this.y += this.speedY;
+        this.opacity -= 0.02;
+        if (this.size > 0.2) this.size -= 0.1;
+    }
+    draw() {
+        ctx.globalAlpha = this.opacity;
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
+
+function createBurst(x, y) {
+    const burstX = x || Math.random() * canvas.width;
+    const burstY = y || Math.random() * canvas.height;
+    const hue = getComputedStyle(document.body).getPropertyValue('--bg-hue');
+    for (let i = 0; i < 30; i++) {
+        const color = `hsl(${(parseInt(hue) + 40) % 360}, 70%, 60%)`;
+        particles.push(new Particle(burstX, burstY, color));
+    }
+}
+
+function animateParticles() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (let i = 0; i < particles.length; i++) {
+        particles[i].update();
+        particles[i].draw();
+        if (particles[i].opacity <= 0) {
+            particles.splice(i, 1);
+            i--;
+        }
+    }
+    requestAnimationFrame(animateParticles);
+}
+animateParticles();
+
+// 3. SYNTH ENGINE (Volume Balanced)
 const ToySynth = {
     rattle() {
         const now = audioCtx.currentTime;
-        const beadCount = 8;
-        for (let i = 0; i < beadCount; i++) {
+        for (let i = 0; i < 8; i++) {
             const startTime = now + (Math.random() * 0.05);
             const source = audioCtx.createBufferSource();
             source.buffer = noiseBuffer;
@@ -42,86 +100,73 @@ const ToySynth = {
             filter.type = 'highpass';
             filter.frequency.value = 3000 + (Math.random() * 2000);
             const gain = audioCtx.createGain();
-            const duration = 0.02 + (Math.random() * 0.03);
             gain.gain.setValueAtTime(0, startTime);
-            gain.gain.linearRampToValueAtTime(0.3, startTime + 0.002);
-            gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+            gain.gain.linearRampToValueAtTime(0.2, startTime + 0.002);
+            gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.05);
             source.connect(filter).connect(gain).connect(audioCtx.destination);
             source.start(startTime);
         }
     },
-
     bell(freq = 880) {
         const now = audioCtx.currentTime;
-        [1, 2, 3, 4.2].forEach((ratio, i) => {
+        [1, 2, 3].forEach((ratio, i) => {
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            osc.frequency.setValueAtTime(freq * ratio, now);
-            gain.gain.setValueAtTime(0, now);
-            gain.gain.linearRampToValueAtTime(0.3 / (i + 1), now + 0.01);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + (1.0 / ratio));
+            osc.frequency.value = freq * ratio;
+            gain.gain.setValueAtTime(0.1 / (i + 1), now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 1);
             osc.connect(gain).connect(audioCtx.destination);
             osc.start(now); osc.stop(now + 1);
         });
     },
-
     wood() {
         const now = audioCtx.currentTime;
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
-        osc.frequency.setValueAtTime(600, now);
-        gain.gain.setValueAtTime(0, now);
-        gain.gain.linearRampToValueAtTime(0.6, now + 0.005);
+        osc.frequency.value = 600;
+        gain.gain.setValueAtTime(0.4, now);
         gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
         osc.connect(gain).connect(audioCtx.destination);
         osc.start(now); osc.stop(now + 0.2);
     },
-
     maraca() {
         const now = audioCtx.currentTime;
         const source = audioCtx.createBufferSource();
         source.buffer = noiseBuffer;
         const filter = audioCtx.createBiquadFilter();
-        filter.type = 'highpass';
-        filter.frequency.value = 5000;
+        filter.type = 'highpass'; filter.frequency.value = 5000;
         const gain = audioCtx.createGain();
-        gain.gain.setValueAtTime(0, now);
-        gain.gain.linearRampToValueAtTime(0.5, now + 0.01);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
         source.connect(filter).connect(gain).connect(audioCtx.destination);
         source.start(now);
     },
-
     crinkle() {
         const now = audioCtx.currentTime;
         const source = audioCtx.createBufferSource();
         source.buffer = noiseBuffer;
         const filter = audioCtx.createBiquadFilter();
-        filter.type = 'highpass';
-        filter.frequency.value = 8000;
+        filter.type = 'highpass'; filter.frequency.value = 8000;
         const gain = audioCtx.createGain();
         gain.gain.setValueAtTime(0.2, now);
         gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
         source.connect(filter).connect(gain).connect(audioCtx.destination);
         source.start(now, Math.random(), 0.2);
     },
-
     squeak() {
         const now = audioCtx.currentTime;
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
         osc.frequency.setValueAtTime(800, now);
         osc.frequency.exponentialRampToValueAtTime(1400, now + 0.1);
-        gain.gain.setValueAtTime(0, now);
-        gain.gain.linearRampToValueAtTime(0.3, now + 0.02);
+        gain.gain.setValueAtTime(0.2, now);
         gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
         osc.connect(gain).connect(audioCtx.destination);
         osc.start(now); osc.stop(now + 0.2);
     },
-
     jingle() {
         const now = audioCtx.currentTime;
-        [1200, 2500, 3100].forEach(f => {
+        [1200, 2500].forEach(f => {
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.frequency.value = f;
@@ -131,7 +176,6 @@ const ToySynth = {
             osc.start(now); osc.stop(now + 0.3);
         });
     },
-
     thump() {
         const now = audioCtx.currentTime;
         const osc = audioCtx.createOscillator();
@@ -143,70 +187,55 @@ const ToySynth = {
         osc.connect(gain).connect(audioCtx.destination);
         osc.start(now); osc.stop(now + 0.2);
     },
-
     duck() {
         const now = audioCtx.currentTime;
         const source = audioCtx.createBufferSource();
         source.buffer = noiseBuffer;
         const filter = audioCtx.createBiquadFilter();
-        filter.type = 'bandpass';
-        filter.frequency.value = 900;
-        filter.Q.value = 5;
+        filter.type = 'bandpass'; filter.frequency.value = 900; filter.Q.value = 5;
         const gain = audioCtx.createGain();
-        gain.gain.setValueAtTime(0, now);
-        gain.gain.linearRampToValueAtTime(0.4, now + 0.05);
+        gain.gain.setValueAtTime(0.3, now);
         gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
         source.connect(filter).connect(gain).connect(audioCtx.destination);
         source.start(now);
     },
-
     musicbox() {
         const now = audioCtx.currentTime;
-        const sequence = [523, 659, 784, 1046];
-        sequence.forEach((freq, i) => {
+        [523, 659, 784, 1046].forEach((freq, i) => {
             const time = now + (i * 0.2);
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            osc.type = 'sine';
             osc.frequency.value = freq;
-            gain.gain.setValueAtTime(0.2, time);
+            gain.gain.setValueAtTime(0.15, time);
             gain.gain.exponentialRampToValueAtTime(0.001, time + 0.3);
             osc.connect(gain).connect(audioCtx.destination);
             osc.start(time); osc.stop(time + 0.4);
         });
     },
-
     whistle() {
         const now = audioCtx.currentTime;
         const source = audioCtx.createBufferSource();
         source.buffer = noiseBuffer;
         const filter = audioCtx.createBiquadFilter();
-        filter.type = 'bandpass';
-        filter.frequency.value = 1500;
-        filter.Q.value = 2;
+        filter.type = 'bandpass'; filter.frequency.value = 1500; filter.Q.value = 2;
         const gain = audioCtx.createGain();
-        gain.gain.setValueAtTime(0, now);
-        gain.gain.linearRampToValueAtTime(0.5, now + 0.05);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+        gain.gain.setValueAtTime(0.4, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
         source.connect(filter).connect(gain).connect(audioCtx.destination);
         source.start(now);
     },
-
     splash() {
         const now = audioCtx.currentTime;
         const source = audioCtx.createBufferSource();
         source.buffer = noiseBuffer;
         const filter = audioCtx.createBiquadFilter();
-        filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(4000, now);
-        filter.frequency.exponentialRampToValueAtTime(100, now + 0.5);
+        filter.type = 'lowpass'; filter.frequency.value = 1000;
         const gain = audioCtx.createGain();
         gain.gain.setValueAtTime(0.4, now);
         gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
         source.connect(filter).connect(gain).connect(audioCtx.destination);
         source.start(now);
     },
-
     pop() {
         const now = audioCtx.currentTime;
         const osc = audioCtx.createOscillator();
@@ -218,7 +247,6 @@ const ToySynth = {
         osc.connect(gain).connect(audioCtx.destination);
         osc.start(now); osc.stop(now + 0.05);
     },
-
     laser() {
         const now = audioCtx.currentTime;
         const osc = audioCtx.createOscillator();
@@ -230,40 +258,23 @@ const ToySynth = {
         osc.connect(gain).connect(audioCtx.destination);
         osc.start(now); osc.stop(now + 0.15);
     },
-
-    tincan() {
+    boing() {
         const now = audioCtx.currentTime;
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
-        
-        // Tin cans have a metallic, slightly dissonant "ping"
-        osc.type = 'triangle'; 
+        osc.type = 'triangle';
         osc.frequency.setValueAtTime(800, now);
-        osc.frequency.exponentialRampToValueAtTime(1200, now + 0.01);
         osc.frequency.exponentialRampToValueAtTime(400, now + 0.1);
-
         gain.gain.setValueAtTime(0.4, now);
         gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
-
-        // Add a second high-pitched oscillator for the "metallic" ring
-        const ring = audioCtx.createOscillator();
-        const ringGain = audioCtx.createGain();
-        ring.frequency.setValueAtTime(2450, now);
-        ringGain.gain.setValueAtTime(0.1, now);
-        ringGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
-
         osc.connect(gain).connect(audioCtx.destination);
-        ring.connect(ringGain).connect(audioCtx.destination);
-        
         osc.start(now); osc.stop(now + 0.2);
-        ring.start(now); ring.stop(now + 0.1);
     },
-
     twinkle() {
         const now = audioCtx.currentTime;
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
-        osc.frequency.setValueAtTime(1500 + Math.random() * 500, now);
+        osc.frequency.value = 1500 + Math.random() * 500;
         gain.gain.setValueAtTime(0.2, now);
         gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
         osc.connect(gain).connect(audioCtx.destination);
@@ -271,9 +282,23 @@ const ToySynth = {
     }
 };
 
-/**
- * 3. CONTROLS & EVENT LISTENERS
- */
+// 4. HANDLERS
+function handleMotion(event) {
+    const acc = event.accelerationIncludingGravity;
+    if (!acc) return;
+    const mag = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2);
+    const now = Date.now();
+    if (mag > 18.0 && (now - lastShake) > 150) {
+        if (isLooping) stopLoop();
+        initAudio();
+        triggerRainbow(); // Fixed: Function now exists
+        createBurst(); // Shake burst at random location
+        if (ToySynth[selectedToy]) ToySynth[selectedToy]();
+        if (navigator.vibrate) navigator.vibrate(50);
+        lastShake = now;        
+    }
+}
+
 function startLoop() {
     if (isLooping) stopLoop();
     isLooping = true;
@@ -292,171 +317,46 @@ function stopLoop() {
     document.getElementById('btn-loop').classList.remove('active-loop');
 }
 
-function handleMotion(event) {
-    const acc = event.accelerationIncludingGravity;
-    if (!acc) return;
-
-    // Calculate the total force (magnitude)
-    const mag = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2);
-    const now = Date.now();
-
-    // 18.0 threshold: Gravity (9.8) + your shake force (~8.2)
-    if (mag > 18.0 && (now - lastShake) > 150) {
-        if (isLooping) stopLoop();
-
-        // 1. Ensure Audio is initialized
-        initAudio();
-        
-        // 2. Play Sound First (Highest Priority)
-        if (ToySynth[selectedToy]) {
-            ToySynth[selectedToy]();
-        }
-
-        // 3. Trigger Visuals (Wrapped in checks to prevent crashes)
-        if (typeof triggerRainbow === "function") triggerRainbow();
-        if (typeof createBurst === "function") createBurst();
-
-        // 4. Haptic Feedback
-        if (navigator.vibrate) navigator.vibrate(50);
-        
-        lastShake = now;        
-    }
-}
-
-/**
- * COLOR CHANGING ENGINE
- */
-function triggerRainbow() {
-    const newHue = Math.floor(Math.random() * 360);
-    document.body.style.setProperty('--bg-hue', newHue);
-}
-
-/**
- * PARTICLE SYSTEM ENGINE
- */
-const canvas = document.getElementById('visualizer');
-const ctx = canvas.getContext('2d');
-let particles = [];
-
-// Resize canvas to fit screen
-function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-}
-window.addEventListener('resize', resizeCanvas);
-resizeCanvas();
-
-class Particle {
-    constructor(x, y, color) {
-        this.x = x;
-        this.y = y;
-        this.size = Math.random() * 8 + 4;
-        this.speedX = (Math.random() * 10 - 5);
-        this.speedY = (Math.random() * 10 - 5);
-        this.color = color;
-        this.opacity = 1;
-    }
-
-    update() {
-        this.x += this.speedX;
-        this.y += this.speedY;
-        this.opacity -= 0.02; // Fade out speed
-        if (this.size > 0.2) this.size -= 0.1;
-    }
-
-    draw() {
-        ctx.globalAlpha = this.opacity;
-        ctx.fillStyle = this.color;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-        ctx.fill();
-    }
-}
-
-function createBurst() {
-    // Generate particles in a random location or center
-    const x = Math.random() * canvas.width;
-    const y = Math.random() * canvas.height;
-    const hue = getComputedStyle(document.body).getPropertyValue('--bg-hue');
-    
-    for (let i = 0; i < 30; i++) {
-        // Particles are slightly offset in color from the background for visibility
-        const color = `hsl(${(parseInt(hue) + 40) % 360}, 70%, 60%)`;
-        particles.push(new Particle(x, y, color));
-    }
-}
-
-function animateParticles() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    for (let i = 0; i < particles.length; i++) {
-        particles[i].update();
-        particles[i].draw();
-        
-        // Remove "dead" particles
-        if (particles[i].opacity <= 0) {
-            particles.splice(i, 1);
-            i--;
-        }
-    }
-    requestAnimationFrame(animateParticles);
-}
-
-// Start the animation loop
-animateParticles();
-
-// User Start Button
+// 5. EVENT LISTENERS
 document.getElementById('btn-start').addEventListener('click', async () => {
     initAudio();
-    await audioCtx.resume();
-    // iOS Motion Permission
+    if (audioCtx.state === 'suspended') await audioCtx.resume();
     if (typeof DeviceMotionEvent.requestPermission === 'function') {
-        await DeviceMotionEvent.requestPermission();
+        try {
+            await DeviceMotionEvent.requestPermission();
+        } catch (e) { console.error(e); }
     }
     document.getElementById('permission-overlay').classList.add('hidden');
     document.getElementById('app-container').classList.remove('hidden');
     window.addEventListener('devicemotion', handleMotion);
 });
 
-// Grid Selection
 document.querySelectorAll('.toy-card').forEach(card => {
-    card.addEventListener('click', () => {
+    card.addEventListener('click', (e) => {
         stopLoop();
         initAudio();
         selectedToy = card.dataset.sound;
         document.querySelectorAll('.toy-card').forEach(c => c.classList.remove('active'));
         card.classList.add('active');
-        ToySynth[selectedToy](); // Play once to test
-
-        // Add this to test color change on tap:
-        const newHue = Math.floor(Math.random() * 360);
-        document.body.style.setProperty('--bg-hue', newHue);
+        
+        triggerRainbow(); // Fixed: Using function
+        createBurst(e.clientX, e.clientY); // Fixed: Burst at tap location
+        if (ToySynth[selectedToy]) ToySynth[selectedToy]();
     });
 });
 
 document.getElementById('btn-loop').addEventListener('click', startLoop);
 document.getElementById('btn-stop').addEventListener('click', stopLoop);
 
-
-/**
- * PWA AUTO-UPDATE LOGIC
- */
+// 6. PWA UPDATER
 if ('serviceWorker' in navigator) {
     let refreshing = false;
-
-    // Detect when the new Service Worker takes control
     navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (!refreshing) {
             refreshing = true;
-            // Reload the page to load the new code (fireworks, sounds, etc.)
             window.location.reload();
         }
     });
-
-    navigator.serviceWorker.register('./sw.js').then(registration => {
-        // Optional: Check for updates every 10 minutes
-        setInterval(() => {
-            registration.update();
-            console.log("Checking for toy updates...");
-        }, 1000 * 60 * 10);
-    });
+    // Matches GitHub Pages path
+    navigator.serviceWorker.register('./sw.js');
 }
