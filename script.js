@@ -302,6 +302,9 @@ function handleMotion(event) {
         ToySynth[selectedToy]();
         if (navigator.vibrate) navigator.vibrate(50);
         lastShake = Date.now();
+
+        const randomHue = Math.floor(Math.random() * 360);
+        document.body.style.setProperty('--bg-hue', randomHue);
     }
 }
 
