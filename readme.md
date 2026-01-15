@@ -161,3 +161,7 @@ This app was built for my beloved daughter,
 
 May every shake bring laughter. May every sound spark wonder. And may technology always be gentle enough for little hands.
 
+
+<img width="396" height="862" alt="image" src="https://github.com/user-attachments/assets/675b73f5-84fa-4b50-afc3-5e5e39b309e1" />
+
+
