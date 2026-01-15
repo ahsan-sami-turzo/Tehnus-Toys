@@ -1,3 +1,5 @@
+/* Clean Reset */
+
 :root {
     /* Default background color (soft blue) */
     --bg-hue: 200; 
@@ -5,7 +7,6 @@
     --bg-lightness: 95%;
 }
 
-/* Clean Reset */
 * {
     box-sizing: border-box;
     -webkit-tap-highlight-color: transparent;
@@ -19,8 +20,10 @@ body, html {
     height: 100%;
     font-family: 'Rounded Mplus 1c', sans-serif;
     /* This dynamic background changes when --bg-hue is updated by JS */
-    background-color: hsl(var(--bg-hue), var(--bg-saturation), var(--bg-lightness));
-    transition: background-color 0.5s ease;
+    /* background-color: hsl(var(--bg-hue), var(--bg-saturation), var(--bg-lightness)); */
+        
+    background-color: hsl(var(--bg-hue), 30%, 95%);
+    transition: background-color 0.5s ease; /* Smooth fade between colors */
     overflow: hidden;
 }
 

@@ -298,13 +298,18 @@ function handleMotion(event) {
     const mag = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2);
     if (mag > 18.0 && (Date.now() - lastShake) > 150) {
         if (isLooping) stopLoop();
+
+        // --- RAINBOW LOGIC START ---
+        // Pick a random number between 0 and 360 (the color wheel)
+        const newHue = Math.floor(Math.random() * 360);
+        // Apply it to the document body
+        document.body.style.setProperty('--bg-hue', newHue);
+        // --- RAINBOW LOGIC END ---
+
         initAudio();
         ToySynth[selectedToy]();
         if (navigator.vibrate) navigator.vibrate(50);
-        lastShake = Date.now();
-
-        const randomHue = Math.floor(Math.random() * 360);
-        document.body.style.setProperty('--bg-hue', randomHue);
+        lastShake = Date.now();        
     }
 }
 
@@ -330,6 +335,10 @@ document.querySelectorAll('.toy-card').forEach(card => {
         document.querySelectorAll('.toy-card').forEach(c => c.classList.remove('active'));
         card.classList.add('active');
         ToySynth[selectedToy](); // Play once to test
+
+        // Add this to test color change on tap:
+        const newHue = Math.floor(Math.random() * 360);
+        document.body.style.setProperty('--bg-hue', newHue);
     });
 });
 
