@@ -20,24 +20,33 @@
     </div>
 
     <main id="app-container" class="hidden">
-        <div class="grid">
-            <div class="toy-card" data-sound="rattle" style="background-color: #FFB7B2;">
-                <span class="icon">🪇</span>
-                <span class="label">Rattle</span>
-            </div>
-            <div class="toy-card" data-sound="bell" style="background-color: #B2E2F2;">
-                <span class="icon">🔔</span>
-                <span class="label">Bell</span>
-            </div>
-            <div class="toy-card" data-sound="maraca" style="background-color: #FDFD96;">
-                <span class="icon">✨</span>
-                <span class="label">Maraca</span>
-            </div>
-            <div class="toy-card" data-sound="wood" style="background-color: #B2F2BB;">
-                <span class="icon">🪵</span>
-                <span class="label">Wood</span>
-            </div>
+        <div class="grid 16-grid">
+            <div class="toy-card" data-sound="rattle" style="background-color: #FFB7B2;"><span>🪇</span><small>Rattle</small></div>
+            <div class="toy-card" data-sound="bell" style="background-color: #B2E2F2;"><span>🔔</span><small>Bell</small></div>
+            <div class="toy-card" data-sound="wood" style="background-color: #B2F2BB;"><span>🪵</span><small>Chime</small></div>
+            <div class="toy-card" data-sound="maraca" style="background-color: #FDFD96;"><span>✨</span><small>Maraca</small></div>
+            
+            <div class="toy-card" data-sound="crinkle" style="background-color: #E2B2F2;"><span>📜</span><small>Crinkle</small></div>
+            <div class="toy-card" data-sound="squeak" style="background-color: #F2B2DA;"><span>🐭</span><small>Squeak</small></div>
+            <div class="toy-card" data-sound="jingle" style="background-color: #B2F2E2;"><span>🎐</span><small>Jingle</small></div>
+            <div class="toy-card" data-sound="thump" style="background-color: #D3F2B2;"><span>🥁</span><small>Thump</small></div>
+
+            <div class="toy-card" data-sound="duck" style="background-color: #FFFFB2;"><span>🦆</span><small>Duck</small></div>
+            <div class="toy-card" data-sound="musicbox" style="background-color: #B2D0F2;"><span>🎼</span><small>Music Box</small></div>
+            <div class="toy-card" data-sound="whistle" style="background-color: #F2CBB2;"><span>🌬️</span><small>Whistle</small></div>
+            <div class="toy-card" data-sound="splash" style="background-color: #B2EBF2;"><span>🌊</span><small>Splash</small></div>
+
+            <div class="toy-card" data-sound="pop" style="background-color: #F2B2B2;"><span>🫧</span><small>Pop</small></div>
+            <div class="toy-card" data-sound="laser" style="background-color: #B2F2CC;"><span>🔫</span><small>Laser</small></div>
+            <div class="toy-card" data-sound="boing" style="background-color: #EBF2B2;"><span>🌀</span><small>Boing</small></div>
+            <div class="toy-card" data-sound="twinkle" style="background-color: #F2E2B2;"><span>⭐</span><small>Twinkle</small></div>
         </div>
+
+        <div class="controls">
+            <button id="btn-loop" class="control-btn">🔄 LOOP</button>
+            <button id="btn-stop" class="control-btn stop">🛑 STOP</button>
+        </div>
+
         <div class="status-bar">
             Shake your phone to play!
         </div>

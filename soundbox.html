@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tehnus Toys Soundboard</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: #f0f8ff; margin: 0; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; max-width: 600px; width: 90%; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .header { text-align: center; margin-bottom: 20px; }
+        button { padding: 20px 10px; font-size: 1rem; font-weight: bold; cursor: pointer; border: none; border-radius: 12px; transition: all 0.1s; color: white; text-transform: uppercase; letter-spacing: 1px; }
+        button:active { transform: scale(0.92); filter: brightness(1.2); }
+        
+        /* Individual Colors */
+        .btn-rattle { background: #ff6b6b; }
+        .btn-bell { background: #4ecdc4; }
+        .btn-wood { background: #f7d794; color: #574b90; }
+        .btn-maraca { background: #4834d4; }
+        .btn-crinkle { background: #95afc0; }
+        .btn-squeak { background: #eb4d4b; }
+        .btn-jingle { background: #f9ca24; color: #333; }
+        .btn-thump { background: #22a6b3; }
+        .btn-duck { background: #feca57; color: #333; }
+        .btn-musicbox { background: #ff9ff3; }
+        .btn-whistle { background: #1dd1a1; }
+        .btn-splash { background: #48dbfb; }
+
+        .intensity-box { grid-column: 1 / -1; margin-top: 10px; padding: 10px; border-top: 1px solid #eee; }
+        input[type=range] { width: 100%; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Tehnus Toys Soundboard</h1>
+        <p>Click a button to play</p>
+    </div>
+
+    <div class="grid">
+        <button class="btn-rattle" onclick="playRattle()">Rattle</button>
+        <button class="btn-bell" onclick="playBell()">Bell</button>
+        <button class="btn-wood" onclick="playWoodChime()">Wood</button>
+        <button class="btn-maraca" onclick="playMaraca()">Maraca</button>
+        <button class="btn-crinkle" onclick="playCrinkle()">Crinkle</button>
+        <button class="btn-squeak" onclick="playSqueak()">Squeak</button>
+        <button class="btn-jingle" onclick="playJingle()">Jingle</button>
+        <button class="btn-thump" onclick="playThump()">Thump</button>
+        <button class="btn-duck" onclick="playDuckSqueeze()">Rubber Duck</button>
+        <button class="btn-musicbox" onclick="playMusicBox()">Music Box</button>
+        <button class="btn-whistle" onclick="playWhistle()">Whistle</button>
+        <button class="btn-splash" onclick="playSplash()">Splash</button>
+
+        <div class="intensity-box">
+            <label style="font-size: 0.8rem; color: #666;">Intensity (Rattle/Maraca):</label>
+            <input type="range" id="intensity" min="0.1" max="1.0" step="0.1" value="0.6">
+        </div>
+    </div>
+
+    <script>
+        let audioCtx;
+        let noiseBuffer;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Create shared noise buffer for Rattle, Maraca, Crinkle, Whistle, Splash, Duck
+                const bufferSize = audioCtx.sampleRate * 2;
+                noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                const data = noiseBuffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+            }
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        const getIntensity = () => parseFloat(document.getElementById('intensity').value);
+
+        function playRattle() {
+            initAudio();
+            const intensity = getIntensity();
+            const now = audioCtx.currentTime;
+            const beadCount = Math.floor(5 + (intensity * 10));
+            
+            for (let i = 0; i < beadCount; i++) {
+                const startTime = now + (Math.random() * 0.1);
+                const source = audioCtx.createBufferSource();
+                source.buffer = noiseBuffer;
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'highpass';
+                filter.frequency.value = 3000 + (Math.random() * 2000);
+                const gain = audioCtx.createGain();
+                const duration = 0.01 + (Math.random() * 0.03);
+                
+                gain.gain.setValueAtTime(0, startTime);
+                gain.gain.linearRampToValueAtTime(intensity * (Math.random() * 0.4), startTime + 0.002);
+                gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+
+                source.connect(filter).connect(gain).connect(audioCtx.destination);
+                source.start(startTime);
+                source.stop(startTime + duration + 0.1);
+            }
+        }
+
+        function playBell(freq = 880) {
+            initAudio();
+            const now = audioCtx.currentTime;
+            const ratios = [1, 2, 3, 4.2, 5.4]; 
+            ratios.forEach((ratio, i) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq * ratio, now);
+                const vol = 0.4 / (i + 1);
+                gain.gain.setValueAtTime(0, now);
+                gain.gain.linearRampToValueAtTime(vol, now + 0.01);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + (1.2 / ratio));
+                osc.connect(gain).connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 2);
+            });
+        }
+
+        function playWoodChime(freq = 600) {
+            initAudio();
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, now);
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(0.6, now + 0.005);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+            osc.connect(gain).connect(audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + 0.2);
+        }
+
+        function playMaraca() {
+            initAudio();
+            const now = audioCtx.currentTime;
+            const intensity = getIntensity();
+            const source = audioCtx.createBufferSource();
+            const filter = audioCtx.createBiquadFilter();
+            const gain = audioCtx.createGain();
+            source.buffer = noiseBuffer;
+            filter.type = 'highpass';
+            filter.frequency.value = 5000;
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(intensity, now + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+            source.connect(filter).connect(gain).connect(audioCtx.destination);
+            source.start(now);
+            source.stop(now + 0.2);
+        }
+
+        function playCrinkle() {
+            initAudio();
+            const now = audioCtx.currentTime;
+            const source = audioCtx.createBufferSource();
+            source.buffer = noiseBuffer;
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'highpass';
+            filter.frequency.value = 8000;
+            const gain = audioCtx.createGain();
+            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+            source.connect(filter).connect(gain).connect(audioCtx.destination);
+            source.start(now, Math.random(), 0.2);
+        }
+
+        function playSqueak() {
+            initAudio();
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.frequency.setValueAtTime(800, now);
+            osc.frequency.exponentialRampToValueAtTime(1400, now + 0.1);
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(0.3, now + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+            osc.connect(gain).connect(audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + 0.2);
+        }
+
+        function playJingle() {
+            initAudio();
+            const now = audioCtx.currentTime;
+            [1200, 2500, 3100].forEach(f => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.frequency.value = f;
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                osc.connect(gain).connect(audioCtx.destination);
+                osc.start(now); 
+                osc.stop(now + 0.3);
+            });
+        }
+
+        function playThump() {
+            initAudio();
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.frequency.setValueAtTime(150, now);
+            osc.frequency.exponentialRampToValueAtTime(40, now + 0.2);
+            gain.gain.setValueAtTime(0.5, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+            osc.connect(gain).connect(audioCtx.destination);
+            osc.start(now); 
+            osc.stop(now + 0.2);
+        }
+
+        // RUBBER DUCK SQUEEZE (Filtered impulse noise)
+        function playDuckSqueeze() {
+            initAudio();
+            const now = audioCtx.currentTime;
+            // Generate short burst of noise for the "air release"
+            // Note: We create a local buffer here as its length is very specific to the sound duration
+            const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.1, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < buffer.length; i++) data[i] = Math.random() * 2 - 1;
+
+            const source = audioCtx.createBufferSource();
+            source.buffer = buffer;
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'bandpass';
+            filter.frequency.value = 900; // Resonant frequency
+            filter.Q.value = 5; // High Q makes it "whistle"
+
+            const gain = audioCtx.createGain();
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(0.4, now + 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+
+            source.connect(filter).connect(gain).connect(audioCtx.destination);
+            source.start(now);
+            source.stop(now + 0.1);
+        }
+
+        // MUSIC BOX TUNE (Sequenced sine waves)
+        function playMusicBox() {
+            initAudio();
+            const now = audioCtx.currentTime;
+            const sequence = [523, 659, 784, 1046, 784, 659, 523, 0]; // C5 E5 G5 C6 G5 E5 C5 Rest
+            let time = now;
+            sequence.forEach(freq => {
+                if (freq > 0) {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+                    gain.gain.setValueAtTime(0.2, time);
+                    gain.gain.exponentialRampToValueAtTime(0.001, time + 0.3); // Short plink
+                    osc.connect(gain).connect(audioCtx.destination);
+                    osc.start(time);
+                    osc.stop(time + 0.4);
+                }
+                time += 0.4; // Advance time for next note
+            });
+        }
+
+        // WHISTLE (Pitched noise burst)
+        function playWhistle() {
+            initAudio();
+            const now = audioCtx.currentTime;
+            const source = audioCtx.createBufferSource();
+            source.buffer = noiseBuffer; // Reuse shared noise buffer
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'bandpass';
+            filter.frequency.value = 1500;
+            filter.Q.value = 2;
+
+            const gain = audioCtx.createGain();
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(0.5, now + 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+
+            source.connect(filter).connect(gain).connect(audioCtx.destination);
+            source.start(now);
+            source.stop(now + 0.5);
+        }
+
+        // SPLASH (Low-pass filtered, randomized noise)
+        function playSplash() {
+            initAudio();
+            const now = audioCtx.currentTime;
+            const source = audioCtx.createBufferSource();
+            source.buffer = noiseBuffer;
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(4000, now);
+            filter.frequency.exponentialRampToValueAtTime(100, now + 0.5); // Frequency drops as bubbles settle
+
+            const gain = audioCtx.createGain();
+            gain.gain.setValueAtTime(0.6, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+
+            source.connect(filter).connect(gain).connect(audioCtx.destination);
+            source.start(now);
+            source.stop(now + 0.5);
+        }
+    </script>
+</body>
+</html>

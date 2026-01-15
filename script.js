@@ -1,165 +1,334 @@
 /**
- * TEHNUS TOYS - Core Logic
- * Includes: Shake detection, persistence hacks, and audio management.
+ * TEHNUS TOYS - 16 Sound Edition
+ * Features: Synthetic noise generation, rhythmic looping, and shake detection.
  */
 
+let audioCtx;
+let noiseBuffer;
 let selectedToy = 'rattle';
 let lastShake = 0;
-let wakeLock = null;
-let currentAudio = null; // Global instance to manage "One sound at a time"
-let silentLoop = null;
+let loopInterval = null;
+let isLooping = false;
 
-// Audio Asset Paths
-const sounds = {
-    rattle: 'assets/rattle.mp3',
-    bell: 'assets/bell.mp3',
-    maraca: 'assets/maraca.mp3',
-    wood: 'assets/wood.mp3',
-    silent: 'assets/silent_loop.mp3'
+// 1. SYSTEM INITIALIZATION
+function initAudio() {
+    if (audioCtx) return;
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    // Create shared noise buffer for Rattle, Maraca, Crinkle, etc.
+    const bufferSize = audioCtx.sampleRate * 2;
+    noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+        data[i] = Math.random() * 2 - 1;
+    }
+}
+
+// Utility to get shake intensity (scaled for audio)
+const getIntensity = () => 0.8; 
+
+/**
+ * 2. THE TOY SYNTH ENGINE
+ */
+const ToySynth = {
+    rattle() {
+        const now = audioCtx.currentTime;
+        const beadCount = 8;
+        for (let i = 0; i < beadCount; i++) {
+            const startTime = now + (Math.random() * 0.05);
+            const source = audioCtx.createBufferSource();
+            source.buffer = noiseBuffer;
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'highpass';
+            filter.frequency.value = 3000 + (Math.random() * 2000);
+            const gain = audioCtx.createGain();
+            const duration = 0.02 + (Math.random() * 0.03);
+            gain.gain.setValueAtTime(0, startTime);
+            gain.gain.linearRampToValueAtTime(0.3, startTime + 0.002);
+            gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+            source.connect(filter).connect(gain).connect(audioCtx.destination);
+            source.start(startTime);
+        }
+    },
+
+    bell(freq = 880) {
+        const now = audioCtx.currentTime;
+        [1, 2, 3, 4.2].forEach((ratio, i) => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.frequency.setValueAtTime(freq * ratio, now);
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(0.3 / (i + 1), now + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + (1.0 / ratio));
+            osc.connect(gain).connect(audioCtx.destination);
+            osc.start(now); osc.stop(now + 1);
+        });
+    },
+
+    wood() {
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.frequency.setValueAtTime(600, now);
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.6, now + 0.005);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+        osc.connect(gain).connect(audioCtx.destination);
+        osc.start(now); osc.stop(now + 0.2);
+    },
+
+    maraca() {
+        const now = audioCtx.currentTime;
+        const source = audioCtx.createBufferSource();
+        source.buffer = noiseBuffer;
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = 'highpass';
+        filter.frequency.value = 5000;
+        const gain = audioCtx.createGain();
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.5, now + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+        source.connect(filter).connect(gain).connect(audioCtx.destination);
+        source.start(now);
+    },
+
+    crinkle() {
+        const now = audioCtx.currentTime;
+        const source = audioCtx.createBufferSource();
+        source.buffer = noiseBuffer;
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = 'highpass';
+        filter.frequency.value = 8000;
+        const gain = audioCtx.createGain();
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+        source.connect(filter).connect(gain).connect(audioCtx.destination);
+        source.start(now, Math.random(), 0.2);
+    },
+
+    squeak() {
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.frequency.setValueAtTime(800, now);
+        osc.frequency.exponentialRampToValueAtTime(1400, now + 0.1);
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.3, now + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+        osc.connect(gain).connect(audioCtx.destination);
+        osc.start(now); osc.stop(now + 0.2);
+    },
+
+    jingle() {
+        const now = audioCtx.currentTime;
+        [1200, 2500, 3100].forEach(f => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.frequency.value = f;
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+            osc.connect(gain).connect(audioCtx.destination);
+            osc.start(now); osc.stop(now + 0.3);
+        });
+    },
+
+    thump() {
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.exponentialRampToValueAtTime(40, now + 0.2);
+        gain.gain.setValueAtTime(0.5, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+        osc.connect(gain).connect(audioCtx.destination);
+        osc.start(now); osc.stop(now + 0.2);
+    },
+
+    duck() {
+        const now = audioCtx.currentTime;
+        const source = audioCtx.createBufferSource();
+        source.buffer = noiseBuffer;
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.value = 900;
+        filter.Q.value = 5;
+        const gain = audioCtx.createGain();
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.4, now + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+        source.connect(filter).connect(gain).connect(audioCtx.destination);
+        source.start(now);
+    },
+
+    musicbox() {
+        const now = audioCtx.currentTime;
+        const sequence = [523, 659, 784, 1046];
+        sequence.forEach((freq, i) => {
+            const time = now + (i * 0.2);
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0.2, time);
+            gain.gain.exponentialRampToValueAtTime(0.001, time + 0.3);
+            osc.connect(gain).connect(audioCtx.destination);
+            osc.start(time); osc.stop(time + 0.4);
+        });
+    },
+
+    whistle() {
+        const now = audioCtx.currentTime;
+        const source = audioCtx.createBufferSource();
+        source.buffer = noiseBuffer;
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.value = 1500;
+        filter.Q.value = 2;
+        const gain = audioCtx.createGain();
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.5, now + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+        source.connect(filter).connect(gain).connect(audioCtx.destination);
+        source.start(now);
+    },
+
+    splash() {
+        const now = audioCtx.currentTime;
+        const source = audioCtx.createBufferSource();
+        source.buffer = noiseBuffer;
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(4000, now);
+        filter.frequency.exponentialRampToValueAtTime(100, now + 0.5);
+        const gain = audioCtx.createGain();
+        gain.gain.setValueAtTime(0.4, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+        source.connect(filter).connect(gain).connect(audioCtx.destination);
+        source.start(now);
+    },
+
+    pop() {
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.frequency.setValueAtTime(1200, now);
+        osc.frequency.exponentialRampToValueAtTime(2000, now + 0.02);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+        osc.connect(gain).connect(audioCtx.destination);
+        osc.start(now); osc.stop(now + 0.05);
+    },
+
+    laser() {
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.frequency.setValueAtTime(2000, now);
+        osc.frequency.exponentialRampToValueAtTime(50, now + 0.15);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+        osc.connect(gain).connect(audioCtx.destination);
+        osc.start(now); osc.stop(now + 0.15);
+    },
+
+    boing() {
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        
+        // Tin cans have a metallic, slightly dissonant "ping"
+        osc.type = 'triangle'; 
+        osc.frequency.setValueAtTime(800, now);
+        osc.frequency.exponentialRampToValueAtTime(1200, now + 0.01);
+        osc.frequency.exponentialRampToValueAtTime(400, now + 0.1);
+
+        gain.gain.setValueAtTime(0.4, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+
+        // Add a second high-pitched oscillator for the "metallic" ring
+        const ring = audioCtx.createOscillator();
+        const ringGain = audioCtx.createGain();
+        ring.frequency.setValueAtTime(2450, now);
+        ringGain.gain.setValueAtTime(0.1, now);
+        ringGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+
+        osc.connect(gain).connect(audioCtx.destination);
+        ring.connect(ringGain).connect(audioCtx.destination);
+        
+        osc.start(now); osc.stop(now + 0.2);
+        ring.start(now); ring.stop(now + 0.1);
+    },
+
+    twinkle() {
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.frequency.setValueAtTime(1500 + Math.random() * 500, now);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+        osc.connect(gain).connect(audioCtx.destination);
+        osc.start(now); osc.stop(now + 0.1);
+    }
 };
 
-// UI Elements
-const overlay = document.getElementById('permission-overlay');
-const appContainer = document.getElementById('app-container');
-const cards = document.querySelectorAll('.toy-card');
-const startBtn = document.getElementById('btn-start');
-
 /**
- * 1. INITIALIZATION & PERMISSIONS
- * Triggered by the user gesture (Start Button)
+ * 3. CONTROLS & EVENT LISTENERS
  */
-startBtn.addEventListener('click', async () => {
-    // A. Request Motion Permissions (Required for iOS 13+)
-    if (typeof DeviceMotionEvent.requestPermission === 'function') {
-        try {
-            const permission = await DeviceMotionEvent.requestPermission();
-            if (permission !== 'granted') {
-                alert("Permission denied. The app needs motion access to work!");
-                return;
-            }
-        } catch (error) {
-            console.error("DeviceMotion permission error:", error);
-        }
-    }
+function startLoop() {
+    if (isLooping) stopLoop();
+    isLooping = true;
+    document.getElementById('btn-loop').classList.add('active-loop');
+    const playTick = () => {
+        if (!isLooping) return;
+        ToySynth[selectedToy]();
+        loopInterval = setTimeout(playTick, 300);
+    };
+    playTick();
+}
 
-    // B. Activate Persistence Hacks
-    requestWakeLock();
-    startSilentLoop();
+function stopLoop() {
+    isLooping = false;
+    clearTimeout(loopInterval);
+    document.getElementById('btn-loop').classList.remove('active-loop');
+}
 
-    // C. Transition UI
-    overlay.classList.add('hidden');
-    appContainer.classList.remove('hidden');
-    
-    // D. Start listening for shakes
-    window.addEventListener('devicemotion', handleMotion);
-});
-
-/**
- * 2. SHAKE DETECTION LOGIC
- */
 function handleMotion(event) {
     const acc = event.accelerationIncludingGravity;
     if (!acc) return;
-
-    /**
-     * SHAKE MATH:
-     * Magnitude = sqrt(x² + y² + z²)
-     * Gravity is ~9.8 m/s². A threshold of 18.0 ensures 
-     * we only trigger on a deliberate physical shake.
-     */
-    const magnitude = Math.sqrt(acc.x ** 2 + acc.y ** 2 + acc.z ** 2);
-    const threshold = 18.0;
-    const now = Date.now();
-
-    // 150ms Debounce (Cooldown) prevents sound clipping
-    if (magnitude > threshold && (now - lastShake) > 150) {
-        triggerToySound();
-        lastShake = now;
+    const mag = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2);
+    if (mag > 18.0 && (Date.now() - lastShake) > 150) {
+        if (isLooping) stopLoop();
+        initAudio();
+        ToySynth[selectedToy]();
+        if (navigator.vibrate) navigator.vibrate(50);
+        lastShake = Date.now();
     }
 }
 
-/**
- * 3. AUDIO PLAYBACK ENGINE
- */
-function triggerToySound() {
-    // A. Stop current sound if it's already playing (Modification: stop previous)
-    if (currentAudio) {
-        currentAudio.pause();
-        currentAudio.currentTime = 0;
+// User Start Button
+document.getElementById('btn-start').addEventListener('click', async () => {
+    initAudio();
+    await audioCtx.resume();
+    // iOS Motion Permission
+    if (typeof DeviceMotionEvent.requestPermission === 'function') {
+        await DeviceMotionEvent.requestPermission();
     }
+    document.getElementById('permission-overlay').classList.add('hidden');
+    document.getElementById('app-container').classList.remove('hidden');
+    window.addEventListener('devicemotion', handleMotion);
+});
 
-    // B. Haptics
-    if (navigator.vibrate) {
-        navigator.vibrate(50);
-    }
-
-    // C. Visual Feedback
-    const activeCard = document.querySelector(`[data-sound="${selectedToy}"]`);
-    activeCard.classList.add('pulse');
-    setTimeout(() => activeCard.classList.remove('pulse'), 300);
-
-    // D. Play Sound
-    currentAudio = new Audio(sounds[selectedToy]);
-    currentAudio.play().catch(err => console.warn("Playback blocked:", err));
-}
-
-/**
- * 4. TOY SELECTION LOGIC
- */
-cards.forEach(card => {
+// Grid Selection
+document.querySelectorAll('.toy-card').forEach(card => {
     card.addEventListener('click', () => {
-        // Stop any sound currently playing before switching
-        if (currentAudio) {
-            currentAudio.pause();
-            currentAudio.currentTime = 0;
-        }
-
+        stopLoop();
+        initAudio();
         selectedToy = card.dataset.sound;
-        
-        // Update UI visuals
-        cards.forEach(c => c.classList.remove('active'));
+        document.querySelectorAll('.toy-card').forEach(c => c.classList.remove('active'));
         card.classList.add('active');
-        
-        // Play once to confirm selection
-        triggerToySound();
+        ToySynth[selectedToy](); // Play once to test
     });
 });
 
-/**
- * 5. BACKGROUND PERSISTENCE HACKS
- */
-async function requestWakeLock() {
-    if ('wakeLock' in navigator) {
-        try {
-            wakeLock = await navigator.wakeLock.request('screen');
-            // Re-request if app is minimized and then returned to
-            document.addEventListener('visibilitychange', async () => {
-                if (wakeLock !== null && document.visibilityState === 'visible') {
-                    wakeLock = await navigator.wakeLock.request('screen');
-                }
-            });
-        } catch (err) {
-            console.error(`Wake Lock Error: ${err.message}`);
-        }
-    }
-}
-
-function startSilentLoop() {
-    silentLoop = new Audio(sounds.silent);
-    silentLoop.loop = true;
-    silentLoop.volume = 0.05; // Low volume keeps the audio channel open
-    silentLoop.play().catch(() => {
-        console.log("Silent loop requires user interaction first");
-    });
-}
-
-/**
- * 6. SERVICE WORKER REGISTRATION (PWA)
- */
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-            .then(reg => console.log('SW Registered'))
-            .catch(err => console.log('SW Registration failed', err));
-    });
-}
+document.getElementById('btn-loop').addEventListener('click', startLoop);
+document.getElementById('btn-stop').addEventListener('click', stopLoop);
